@@ -1,12 +1,16 @@
 export interface Repository {
+    id: number,
     name : string;
-    description : string;
-    language : string;
-    avatarUrl : string;
+    description? : string;
+    language? : string;
+    owner: {
+        login: string;
+        avatar_url: string;
+    }
 }
 
 // Creación del arreglo con 5 instancias
-export const repositoryList: Repository[] = [
+/*export const repositoryList: Repository[] = [
     {
         name: "react-dashboard",
         avatarUrl: "https://avatars.githubusercontent.com/u/284108501?s=400&u=7b09a9d3339f7fb99ef7486c696f41cf97c19f55&v=4",
@@ -37,4 +41,4 @@ export const repositoryList: Repository[] = [
         description: "Un motor de videojuegos 2D enfocado en el rendimiento y la seguridad de memoria.",
         language: "Rust"
     }
-];
+];*/
