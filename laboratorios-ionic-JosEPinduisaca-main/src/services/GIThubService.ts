@@ -57,3 +57,32 @@ export const fetchUserInfo = async (): Promise<GithubUser | null> => {
         throw new Error(`${(error as Error).message}`);
     }
 };
+
+// --- NUEVOS MÉTODOS AÑADIDOS ---
+
+export const updateRepository = async (owner: string, repo: string, repositoryData: Partial<RepositoryPayload>): Promise<Repository | null> => {
+    try {
+        // Para actualizar usamos PATCH y la ruta incluye el dueño y el nombre del repo
+        const response = await apiClient.patch(`/repos/${owner}/${repo}`, repositoryData);
+        if (response.status !== 200) {
+            throw new Error(`${response.statusText}`);
+        }
+        return response.data;
+    } catch (error) {
+        throw new Error(`${(error as Error).message}`);
+    }
+};
+
+export const deleteRepository = async (owner: string, repo: string): Promise<boolean> => {
+    try {
+        // Para eliminar usamos DELETE y la ruta incluye el dueño y el nombre del repo
+        const response = await apiClient.delete(`/repos/${owner}/${repo}`);
+        // GitHub devuelve 204 No Content cuando se elimina correctamente
+        if (response.status !== 204) {
+            throw new Error(`${response.statusText}`);
+        }
+        return true;
+    } catch (error) {
+        throw new Error(`${(error as Error).message}`);
+    }
+};
