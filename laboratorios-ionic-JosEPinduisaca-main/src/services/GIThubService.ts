@@ -3,16 +3,36 @@ import { Repository } from '../interfaces/Repository';
 import { GithubUser } from '../interfaces/GithubUser';
 import { RepositoryPayload } from '../interfaces/RepositoryPayload';
 
-const GITHUB_API_URL = import.meta.env.VITE_GITE_API_URL;
-const GITHUB_API_TOKEN = import.meta.env.VITE_GITE_API_TOKEN;
+const GITHUB_API_URL =
+    import.meta.env.VITE_GITE_API_URL ||
+    import.meta.env.VITE_GITHUB_API_URL ||
+    'https://api.github.com';
+
+const GITHUB_API_TOKEN =
+    import.meta.env.VITE_GITE_API_TOKEN ||
+    import.meta.env.VITE_GITHUB_TOKEN ||
+    '';
 
 const apiClient = axios.create({
     baseURL: GITHUB_API_URL,
     headers: {
-        Authorization: `Bearer ${GITHUB_API_TOKEN}`,
-        Accept: 'application/vnd.github.v3+json'
+        Accept: 'application/vnd.github+json',
+        ...(GITHUB_API_TOKEN ? { Authorization: `Bearer ${GITHUB_API_TOKEN}` } : {})
     }
 });
+
+const getErrorMessage = (error: unknown): string => {
+    if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.message;
+        return typeof message === 'string' ? message : error.message;
+    }
+
+    if (error instanceof Error) {
+        return error.message;
+    }
+
+    return 'Error inesperado';
+};
 
 export const fetchRepositories = async (): Promise<Repository[]> => {
     try {
@@ -30,7 +50,7 @@ export const fetchRepositories = async (): Promise<Repository[]> => {
         }
         return response.data;
     } catch (error) {
-        throw new Error(`${(error as Error).message}`);
+        throw new Error(getErrorMessage(error));
     }
 };
 
@@ -42,7 +62,7 @@ export const createRepository = async (repository: RepositoryPayload): Promise<R
         }
         return response.data;
     } catch (error) {
-        throw new Error(`${(error as Error).message}`);
+        throw new Error(getErrorMessage(error));
     }
 };
 
@@ -54,35 +74,32 @@ export const fetchUserInfo = async (): Promise<GithubUser | null> => {
         }
         return response.data;
     } catch (error) {
-        throw new Error(`${(error as Error).message}`);
+        throw new Error(getErrorMessage(error));
     }
 };
 
-// --- NUEVOS MÉTODOS AÑADIDOS ---
+// --- ----aqui estan los de path y delete ---
 
 export const updateRepository = async (owner: string, repo: string, repositoryData: Partial<RepositoryPayload>): Promise<Repository | null> => {
     try {
-        // Para actualizar usamos PATCH y la ruta incluye el dueño y el nombre del repo
         const response = await apiClient.patch(`/repos/${owner}/${repo}`, repositoryData);
         if (response.status !== 200) {
             throw new Error(`${response.statusText}`);
         }
         return response.data;
     } catch (error) {
-        throw new Error(`${(error as Error).message}`);
+        throw new Error(getErrorMessage(error));
     }
 };
 
 export const deleteRepository = async (owner: string, repo: string): Promise<boolean> => {
     try {
-        // Para eliminar usamos DELETE y la ruta incluye el dueño y el nombre del repo
         const response = await apiClient.delete(`/repos/${owner}/${repo}`);
-        // GitHub devuelve 204 No Content cuando se elimina correctamente
-        if (response.status !== 204) {
+        if (![200, 204].includes(response.status)) {
             throw new Error(`${response.statusText}`);
         }
         return true;
     } catch (error) {
-        throw new Error(`${(error as Error).message}`);
+        throw new Error(getErrorMessage(error));
     }
 };

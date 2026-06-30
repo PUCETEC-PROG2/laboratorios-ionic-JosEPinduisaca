@@ -1,8 +1,8 @@
-import { IonContent, IonHeader, IonList, IonPage, IonText, IonTitle, IonToolbar, useIonViewWillEnter } from '@ionic/react';
+import { IonContent, IonHeader, IonList, IonPage, IonText, IonTitle, IonToolbar, useIonViewWillEnter, useIonAlert, useIonToast } from '@ionic/react';
 import './Tab1.css';
 import RepoItem from '../components/RepoItem';
 import React from 'react';
-import { fetchRepositories } from '../services/GithubService';
+import { fetchRepositories, deleteRepository, updateRepository } from '../services/GithubService';
 import { Repository } from '../interfaces/Repository';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -10,10 +10,14 @@ const Tab1: React.FC = () => {
   const [repositoryList, setRepositoryList] = React.useState<Repository[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [errorMsg, setErrorMsg] = React.useState('');
+  
+  //  para alertas y notificaciones visuales
+  const [presentAlert] = useIonAlert();
+  const [presentToast] = useIonToast();
 
   const fetchRepos = async () => {
     setLoading(true);
-    setErrorMsg(''); // Limpiamos errores previos al iniciar
+    setErrorMsg('');
     try {
       const repos = await fetchRepositories();
       setRepositoryList(Array.isArray(repos) ? repos : []);
@@ -25,9 +29,70 @@ const Tab1: React.FC = () => {
     }
   };
 
-    useIonViewWillEnter(() => {
+  useIonViewWillEnter(() => {
     fetchRepos();
   });
+
+  //  para manejar la eliminación
+  const handleDelete = (owner: string, repoName: string) => {
+    // aqui debemos confirmación antes de eliminar
+    presentAlert({
+      header: '¿Estás seguro?',
+      message: `Vas a eliminar el repositorio <strong>${repoName}</strong>. Esta acción no se puede deshacer.`,
+      buttons: [
+        { text: 'Cancelar', role: 'cancel' },
+        {
+          text: 'Eliminar',
+          role: 'destructive',
+          handler: async () => {
+            setLoading(true);
+            try {
+              await deleteRepository(owner, repoName);
+              // Filtramos la lista para quitar el eliminado de la pantalla
+              setRepositoryList(prev => prev.filter(repo => repo.name !== repoName));
+              presentToast({ message: 'Repositorio eliminado con éxito', duration: 2000, color: 'success' });
+            } catch (error) {
+              setErrorMsg('Error eliminando: ' + (error as Error).message);
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    });
+  };
+
+  // función para manejar la actualización 
+  const handleUpdate = (owner: string, repoName: string) => {
+    presentAlert({
+      header: 'Actualizar Repositorio',
+      message: `Nueva descripción para ${repoName}:`,
+      inputs: [
+        { name: 'description', type: 'text', placeholder: 'Escribe la nueva descripción...' }
+      ],
+      buttons: [
+        { text: 'Cancelar', role: 'cancel' },
+        {
+          text: 'Guardar',
+          handler: async (alertData) => {
+            setLoading(true);
+            try {
+              const updatedRepo = await updateRepository(owner, repoName, { description: alertData.description });
+              if (updatedRepo) {
+                // Actualizamos solo el repositorio modificado en la lista
+                setRepositoryList(prev => prev.map(repo => repo.name === repoName ? updatedRepo : repo));
+                presentToast({ message: 'Repositorio actualizado con éxito', duration: 2000, color: 'success' });
+              }
+            } catch (error) {
+              setErrorMsg('Error actualizando: ' + (error as Error).message);
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    });
+  };
 
   return (
     <IonPage>
@@ -49,7 +114,12 @@ const Tab1: React.FC = () => {
         {!loading && Array.isArray(repositoryList) && (
           <IonList>
             {repositoryList.map((repo) => (
-              <RepoItem {...repo} key={repo.id}/>
+              <RepoItem
+                key={repo.id}
+                onDelete={handleDelete}
+                onUpdate={handleUpdate}
+                {...repo}
+              />
             ))}
           </IonList>
         )}
